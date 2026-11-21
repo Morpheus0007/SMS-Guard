@@ -37,6 +37,8 @@ def reload_model(model_path: Path | None = None) -> LoadedSMSModel:
 def load_model_info(model_path: Path | None = None) -> dict[str, Any]:
     """Return model metadata and feature weights for inspection and UI visualization."""
     model = get_model(model_path)
+    ml_team = model.ml_team_model
+    has_tfidf = bool(model.tfidf) or bool(ml_team and (ml_team.get("char") or ml_team.get("word")))
     return {
         "checkpoint_version": model.checkpoint_version,
         "format_kind": model.format_kind,
@@ -46,7 +48,8 @@ def load_model_info(model_path: Path | None = None) -> dict[str, Any]:
         "feature_weights": dict(model.feature_weights),
         "intercept": model.intercept,
         "score_shift": model.score_shift,
-        "has_tfidf": bool(model.tfidf),
+        "has_tfidf": has_tfidf,
+        "ml_team_source": ml_team.get("source_file") if isinstance(ml_team, dict) else None,
         "meta": dict(model.meta),
     }
 

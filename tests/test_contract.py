@@ -29,7 +29,7 @@ def test_model_pkl_schema_and_weights_valid() -> None:
 
     assert isinstance(payload, dict)
     assert payload.get("checkpoint_version") == "3.1"
-    assert payload.get("model_type") in {"linear_features", "linear_features_tfidf"}
+    assert payload.get("model_type") in {"linear_features", "linear_features_tfidf", "ml_team_hybrid"}
     assert tuple(payload["feature_names"]) == tuple(FEATURE_NAMES)
 
     fw = payload["feature_weights"]
@@ -72,3 +72,15 @@ def test_inference_speed_80_sms_on_cpu() -> None:
         assert res["risk"] in {"low", "medium", "high"}
     elapsed = time.perf_counter() - start
     assert elapsed < 5.0
+
+
+def test_ml_team_artifact_preserved_and_baseline_selected() -> None:
+    from src.config import BASE_DIR
+
+    with open(DEFAULT_MODEL_PATH, "rb") as f:
+        payload = pickle.load(f)
+
+    # Compact generalizable model selected for release (avoids 45k-feature Colab overfitting)
+    assert payload["model_type"] == "linear_features_tfidf"
+    assert (BASE_DIR / "models" / "sms_fraud_model.pkl").is_file()
+    assert (BASE_DIR / "notebooks" / "sms_fraud_model.ipynb").is_file()

@@ -143,6 +143,10 @@ def transliterate_latin_to_cyrillic(text: str) -> str:
     return result
 
 
+_HOST_LEET_L = str.maketrans({"0": "o", "1": "l", "3": "e", "4": "a", "5": "s", "7": "t"})
+_HOST_LEET_I = str.maketrans({"0": "o", "1": "i", "3": "e", "4": "a", "5": "s", "7": "t"})
+
+
 def _analyze_url(raw_url: str) -> dict[str, object]:
     """Parse URL, detect homoglyphs in host, check official whitelist and brand spoofing."""
     cleaned = raw_url.rstrip(".,!?;:)]}'\"»")
@@ -156,9 +160,20 @@ def _analyze_url(raw_url: str) -> dict[str, object]:
     path_lower = (parsed.path or "").lower()
     is_spoof = False
     if not is_official:
+        host_variants = (
+            ascii_host,
+            ascii_host.translate(_HOST_LEET_L),
+            ascii_host.translate(_HOST_LEET_I),
+        )
         if has_cyr_host or ascii_host in SHORTENER_HOSTS:
             is_spoof = True
-        elif any(tok in ascii_host or tok in path_lower for tok in BRAND_SPOOF_TOKENS):
+        elif any(
+            tok in hv or tok in path_lower
+            for hv in host_variants
+            for tok in BRAND_SPOOF_TOKENS
+        ):
+            is_spoof = True
+        elif any(is_official_host(hv) for hv in host_variants[1:]):
             is_spoof = True
 
     return {

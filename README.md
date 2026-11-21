@@ -20,12 +20,12 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 2. Запуск веб-интерфейса одной командой
+### 2. Запуск веб-интерфейса и Telegram-бота одной командой
 ```bash
 python run.py
-# или напрямую:
-streamlit run app.py
 ```
+Если в `.env` (или переменных окружения) указан `TELEGRAM_BOT_TOKEN`, `python run.py` автоматически запускает **одновременно** веб-интерфейс Streamlit (`app.py`) и Telegram-бота (`bot.py`). Без токена запускается только Streamlit.  
+Также доступны флаги: `python run.py --no-bot`, `python run.py --bot`, `python run.py --eval data/sms_dev.csv`.
 
 ### 3. Оценка модели на CSV (`evaluate.py`)
 ```bash
@@ -45,11 +45,12 @@ python main.py "С р о ч н о ! Ваша SIM-к@рт@ будет забло�
 ```
 Запуск `python main.py` без аргументов открывает интерактивный режим.
 
-### 5. Переобучение модели (`models/model.pkl`)
+### 5. Обучение модели (`models/model.pkl`) и сравнение подходов
+В релизе используется компактная оффлайн-модель `linear_features_tfidf` (**21 КБ**, 12 канонических признаков + ~600 TF-IDF n-грамм без URL, калиброванная по 5-fold Stratified CV под порог `score >= 65`):
 ```bash
 python -m src.train
 ```
-Обучает L2 Logistic Regression + Word `(1,2)` / Char_wb `(3,5)` TF-IDF **строго на `data/sms_train.csv`**, подбирает гиперпараметры и сдвиг `score_shift` (в логитах) под границу `score >= 65` через **5-fold Stratified CV**, и сохраняет переносимый Pickle `models/model.pkl` по контракту v3.1.
+В репозитории также сохранены Colab-артефакты эксперимента с тяжёлым `sklearn.Pipeline` (~45k TF-IDF фич): [notebooks/sms_fraud_model.ipynb](notebooks/sms_fraud_model.ipynb) и [models/sms_fraud_model.pkl](models/sms_fraud_model.pkl). На `sms_dev.csv` оба подхода дали 100%, но на стресс-тесте из 120 новых SMS компактная модель показала лучшую обобщающую способность без переобучения и без ложных срабатываний на антифрод-сообщениях — поэтому именно она выбрана в релиз.
 
 ### 6. Тесты (`pytest`) и бонусный Telegram-бот (`bot.py`)
 ```bash
@@ -79,11 +80,11 @@ python bot.py
 - Автоматический тестовый набор (`tests/`, 49 тест-кейсов + независимый `tests/blind_test.csv` на 50 SMS) и пакет `colab_starter/` для бесшовной интеграции модели от ML-участников.
 
 ### Статус выполнения требований
-Все обязательные требования ТЗ 1 и запланированные бонусные модули (Streamlit-интерфейс, Telegram-бот, строгая проверка доменов по белому списку, советы абоненту, 49 автотестов) выполнены полностью и проверены. Для запуска Telegram-бота в сети Telegram достаточно указать собственный `TELEGRAM_BOT_TOKEN` в `.env`.
+Все обязательные требования ТЗ 1 и запланированные бонусные модули (Streamlit-интерфейс, Telegram-бот, строгая проверка доменов по белому списку, советы абоненту, 50 автотестов, интеграция финальной Colab-модели ML-участников `sms_fraud_model.pkl` + `sms_fraud_model.ipynb`) выполнены полностью и проверены. Для запуска Telegram-бота в сети Telegram достаточно указать собственный `TELEGRAM_BOT_TOKEN` в `.env`.
 
 ---
 
-## Метрики и валидация
+## Метрики и валидация (релизная модель `linear_features_tfidf`)
 
 | Выборка | Accuracy | Precision (fraud) | Recall (fraud) | F1 | Ошибки |
 |---|---:|---:|---:|---:|---|

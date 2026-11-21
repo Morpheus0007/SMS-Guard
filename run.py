@@ -1,8 +1,9 @@
-"""Single-command launcher for SMS Guard (Web UI, Evaluation, CLI, or Telegram Bot)."""
+"""Single-command launcher for SMS Guard (Streamlit Web UI + Telegram Bot, Evaluation, or CLI)."""
 
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 
@@ -18,10 +19,22 @@ def ensure_model_exists() -> None:
         train_main()
 
 
+def _has_telegram_token() -> bool:
+    try:
+        from dotenv import load_dotenv  # type: ignore
+
+        load_dotenv(BASE_DIR / ".env")
+    except ImportError:
+        pass
+    token = (os.environ.get("TELEGRAM_BOT_TOKEN") or "").strip()
+    return bool(token) and token != "your_telegram_bot_token_here"
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="SMS Guard single-command launcher.")
     parser.add_argument("--eval", nargs="?", const="data/sms_dev.csv", help="Run evaluate.py on CSV")
-    parser.add_argument("--bot", action="store_true", help="Launch Telegram bot (requires TELEGRAM_BOT_TOKEN)")
+    parser.add_argument("--bot", action="store_true", help="Launch ONLY Telegram bot")
+    parser.add_argument("--no-bot", action="store_true", help="Launch ONLY Streamlit without Telegram bot")
     parser.add_argument("--check", help="Analyze single SMS text and print JSON")
     args = parser.parse_args()
 
@@ -46,7 +59,29 @@ def main() -> int:
         )
         return 1
 
-    return subprocess.call([sys.executable, "-m", "streamlit", "run", str(BASE_DIR / "app.py")])
+    bot_proc: subprocess.Popen[bytes] | None = None
+    if not args.no_bot and _has_telegram_token():
+        try:
+            import aiogram  # noqa: F401
+
+            print("Starting Telegram bot (bot.py) alongside Streamlit...")
+            bot_proc = subprocess.Popen([sys.executable, str(BASE_DIR / "bot.py")])
+        except ImportError:
+            print("Note: aiogram is not installed — skipping Telegram bot startup.")
+    elif not args.no_bot:
+        print("Note: TELEGRAM_BOT_TOKEN is not set — launching Streamlit only.")
+
+    try:
+        return subprocess.call([sys.executable, "-m", "streamlit", "run", str(BASE_DIR / "app.py")])
+    except KeyboardInterrupt:
+        return 0
+    finally:
+        if bot_proc is not None and bot_proc.poll() is None:
+            bot_proc.terminate()
+            try:
+                bot_proc.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                bot_proc.kill()
 
 
 if __name__ == "__main__":

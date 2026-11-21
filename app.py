@@ -212,10 +212,12 @@ def _render_tab_model(info: dict[str, Any]) -> None:
 
     meta = info.get("meta") or {}
     if meta:
+        ml_src = info.get("ml_team_source")
+        src_note = f", `ML-модель={ml_src}`" if ml_src else ""
         st.write(
             f"**Обучена на:** `n_train={meta.get('n_train', '?')}`, "
             f"`used_dev_for_training={meta.get('used_dev_for_training', False)}`, "
-            f"`TF-IDF={'да' if info.get('has_tfidf') else 'нет'}`"
+            f"`TF-IDF={'да' if info.get('has_tfidf') else 'нет'}`{src_note}"
         )
         if meta.get("cv_metrics"):
             st.write("**5-fold CV (train):**", meta["cv_metrics"])

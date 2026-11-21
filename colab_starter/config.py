@@ -51,6 +51,13 @@ BRAND_SPOOF_TOKENS: Final[tuple[str, ...]] = (
     "bank",
     "online",
     "check",
+    "tunduk",
+    "pochta",
+    "refund",
+    "fine",
+    "cert",
+    "pass",
+    "auth",
 )
 
 FEATURE_NAMES: Final[tuple[str, ...]] = (
